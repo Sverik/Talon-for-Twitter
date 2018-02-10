@@ -122,6 +122,14 @@ public class CatchupPull extends IntentService {
                         }
 
                     }
+
+                    if ( ! statuses.isEmpty()) {
+
+                        String firstText = statuses.get(0).getText();
+                        String lastText = statuses.get(statuses.size() - 1).getText();
+
+                        sendToMinimalisticText(getApplicationContext(), "TalonDebug", statuses.size() + ": " + firstText + "|" + lastText);
+                    }
                 } catch (Exception e) {
                     // the page doesn't exist
                     foundStatus = true;
@@ -206,4 +214,16 @@ public class CatchupPull extends IntentService {
 
         CatchupPull.isRunning = false;
     }
+
+    public static void sendToMinimalisticText(Context context, String varName, String varContent)
+    {
+        Intent sendintent = new Intent("com.twofortyfouram.locale.intent.action.FIRE_SETTING");
+        // important that we only target minimalistic text widget, and not all Locale plugins
+        sendintent.setClassName("de.devmil.minimaltext", "de.devmil.minimaltext.locale.LocaleFireReceiver");
+        sendintent.putExtra("de.devmil.minimaltext.locale.extras.VAR_NAME", varName);
+        sendintent.putExtra("de.devmil.minimaltext.locale.extras.VAR_TEXT", varContent);
+
+        context.sendBroadcast(sendintent);
+    }
+
 }

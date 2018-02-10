@@ -54,6 +54,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Date;
 
 import twitter4j.DirectMessage;
 import twitter4j.IDs;
@@ -116,6 +117,7 @@ public class TalonPullNotificationService extends Service {
 
         showNotification = sharedPreferences.getBoolean("show_pull_notification", true);
         pullUnread = sharedPreferences.getInt("pull_unread", 0);
+        CatchupPull.sendToMinimalisticText(getApplicationContext(), "TalonDebug", "#2 " + pullUnread);
 
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
@@ -573,6 +575,13 @@ public class TalonPullNotificationService extends Service {
                     }
 
                     pullUnread++;
+                    Status toDisplay = status;
+                    if (status.getRetweetedStatus() != null) {
+                        toDisplay = status.getRetweetedStatus();
+                    }
+                    CatchupPull.sendToMinimalisticText(getApplicationContext(), "talon.tweet.text", toDisplay.getText());
+                    CatchupPull.sendToMinimalisticText(getApplicationContext(), "talon.tweet.name", toDisplay.getUser().getName());
+                    CatchupPull.sendToMinimalisticText(getApplicationContext(), "TalonDebug", "#1 " + pullUnread + "|" + status.getText());
                     sharedPreferences.edit().putInt("pull_unread", pullUnread).commit();
                     mContext.sendBroadcast(new Intent("com.klinker.android.twitter.NEW_TWEET"));
                     mContext.sendBroadcast(new Intent("com.klinker.android.twitter.UPDATE_NOTIF"));
