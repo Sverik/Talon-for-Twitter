@@ -18,8 +18,6 @@ package com.klinker.android.twitter.activities.scheduled_tweets;
 
 import android.app.ActionBar;
 import android.app.Activity;
-import android.app.AlarmManager;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -50,11 +48,9 @@ import com.klinker.android.twitter.R;
 import com.klinker.android.twitter.adapters.AutoCompletePeopleAdapter;
 import com.klinker.android.twitter.data.ScheduledTweet;
 import com.klinker.android.twitter.data.sq_lite.FollowersDataSource;
-import com.klinker.android.twitter.data.sq_lite.QueuedDataSource;
 import com.klinker.android.twitter.views.EmojiKeyboard;
-import com.klinker.android.twitter.views.HoloEditText;
-import com.klinker.android.twitter.views.HoloTextView;
-import com.klinker.android.twitter.services.SendScheduledTweet;
+import com.klinker.android.twitter.views.text.HoloEditText;
+import com.klinker.android.twitter.views.text.HoloTextView;
 import com.klinker.android.twitter.settings.AppSettings;
 import com.klinker.android.twitter.utils.Utils;
 
@@ -92,7 +88,7 @@ public class NewScheduledTweet extends Activity {
     private TextView dateDisplay;
 
     private EditText mEditText;
-    private HoloTextView counter;
+    private TextView counter;
     private ImageButton emojiButton;
     private EmojiKeyboard emojiKeyboard;
 
@@ -117,7 +113,8 @@ public class NewScheduledTweet extends Activity {
 
             if (!Patterns.WEB_URL.matcher(text).find()) { // no links, normal tweet
                 try {
-                    counter.setText(140 - mEditText.getText().length() + "");
+                    counter.setText(AppSettings.getInstance(context).tweetCharacterCount -
+                            mEditText.getText().length() + "");
                 } catch (Exception e) {
                     counter.setText("0");
                 }
@@ -130,7 +127,7 @@ public class NewScheduledTweet extends Activity {
                     count += 23; // add 23 for the shortened url
                 }
 
-                counter.setText(140 - count + "");
+                counter.setText(AppSettings.getInstance(context).tweetCharacterCount - count + "");
             }
         }
     };
@@ -154,7 +151,7 @@ public class NewScheduledTweet extends Activity {
         context = this;
 
         mEditText = (EditText) findViewById(R.id.tweet_content);
-        counter = (HoloTextView) findViewById(R.id.char_remaining);
+        counter = (TextView) findViewById(R.id.char_remaining);
         emojiButton = (ImageButton) findViewById(R.id.emojiButton);
         emojiKeyboard = (EmojiKeyboard) findViewById(R.id.emojiKeyboard);
 
@@ -458,17 +455,8 @@ public class NewScheduledTweet extends Activity {
     // including the alarm manager and writing the files to the database to save them
     public boolean doneClick() {
         if (!mEditText.getText().toString().equals("") && timeDone) {
-            int alarmIdNum = sharedPrefs.getInt("scheduled_alarm_id", 400);
-            alarmIdNum++;
-
-            SharedPreferences.Editor prefEdit = sharedPrefs.edit();
-            prefEdit.putInt("scheduled_alarm_id", alarmIdNum);
-            prefEdit.commit();
-
-            ScheduledTweet tweet = new ScheduledTweet(mEditText.getText().toString(), alarmIdNum, setDate.getTime(), settings.currentAccount);
-            QueuedDataSource.getInstance(context).createScheduledTweet(tweet);
-            createAlarm(alarmIdNum);
-
+            ScheduledTweet tweet = new ScheduledTweet(getApplicationContext(), context, mEditText.getText().toString(), setDate.getTime(), settings.currentAccount);
+            tweet.createScheduledTweet();
             finish();
 
         } else {
@@ -481,34 +469,6 @@ public class NewScheduledTweet extends Activity {
         }
         return true;
     }
-
-    public void createAlarm(int alarmId) {
-        Intent serviceIntent = new Intent(getApplicationContext(), SendScheduledTweet.class);
-
-        serviceIntent.putExtra(ViewScheduledTweets.EXTRA_TEXT, mEditText.getText().toString());
-        serviceIntent.putExtra("account", settings.currentAccount);
-        serviceIntent.putExtra("alarm_id", alarmId);
-
-        PendingIntent pi = getDistinctPendingIntent(serviceIntent, alarmId);
-
-        AlarmManager am = (AlarmManager) this.getSystemService(Context.ALARM_SERVICE);
-
-        am.set(AlarmManager.RTC_WAKEUP,
-                setDate.getTime(),
-                pi);
-    }
-
-    protected PendingIntent getDistinctPendingIntent(Intent intent, int requestId) {
-        PendingIntent pi =
-                PendingIntent.getService(
-                        this,
-                        requestId,
-                        intent,
-                        0);
-
-        return pi;
-    }
-
     @Override
     public void onBackPressed() {
         if (emojiKeyboard.isShowing()) {
